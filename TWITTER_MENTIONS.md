@@ -20,6 +20,8 @@ Block on sight if any of these appear:
 - raw token string ending in `pump`
 - long hex-like crypto hash / contract string, especially `0x...`
 - handle/display name with `.bsc`, `XBT`, `BNB`, `0x`, `Crypto`
+- trader / trading / airdrop-hunter identity in handle, display name, or bio is a strong crypto/noise signal
+- trader / trading / airdrop-hunter identity should trigger immediate profile-reply inspection
 - `degen` in handle, display name, or bio is a strong crypto/noise signal
 - crypto-coded handle/display name plus a silly low-signal question: logo bait, mascot bait, `is this your logo`, `is X a mascot`, `what is this logo`, similar empty prompts
 - if someone asks for a logo: investigate profile replies immediately
@@ -128,6 +130,8 @@ If they post a community link and their profile tweets/replies contain crypto sh
 
 If they are a domain squatter / `Domains For Sale` account doing repeated sale pings in your mentions: block.
 
+If they present as trader / trading / airdrop hunter and their profile tweets/replies contain crypto shit: block.
+
 If `degen` appears and the mention is low-value or crypto-adjacent: block.
 
 If strongly derogatory: block.
@@ -168,6 +172,7 @@ If one tweet feels AI-ish but not enough alone:
 - if the trigger was a logo question, specifically look for memecoin, fundraiser, token, wallet, or crypto-chatter patterns in recent replies
 - if the trigger was a community link, specifically look for memecoin names, cashtags, contract strings, wallet spam, token promotion, or generic crypto-reply sludge in recent replies
 - if the trigger was a sale/domain post, specifically look for repeated `is for sale`, `DM if interested`, and founder/project-tagging across recent replies
+- if the trigger was trader / trading / airdrop identity, specifically look for `pump` strings, wallet/CA hashes, cashtags, memecoin replies, or degen-chatter in recent replies
 - if crypto-coded or AI-coded handle and the mention itself is low-signal, assume stricter review: profile replies before giving benefit of the doubt
 - if the pattern is stable across multiple replies: block
 - if it is only one awkward tweet: do not block yet
