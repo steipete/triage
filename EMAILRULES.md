@@ -2,7 +2,7 @@
 
 Updated: 2026-03-09
 Inbox: `steipete@gmail.com`
-Mode: observe-first
+Mode: careful auto-archive for exact junk only
 
 ## Goal
 
@@ -96,8 +96,9 @@ Do not auto-archive if:
 
 Action:
 
-- report as archive candidate
-- observe-first mode: do not mutate yet
+- archive by removing `INBOX`
+- leave unread state unchanged unless a later rule says otherwise
+- include archive result in audit
 
 ## Classes
 
@@ -223,6 +224,29 @@ Rules:
 - confirmations/auto-replies: count only
 - if more than 10 actionable items: group remainder by class
 
+## Auto-Archive Guardrails
+
+Allowed automatic mutation:
+
+- only for exact Rule 1 matches
+- only for exact Rule 2 matches
+- already-reported noise still must be re-checked if it remains in `INBOX` and matches Rule 1 or Rule 2 exactly
+
+Rule 2 must satisfy all of these before auto-archive:
+
+- one-message thread
+- sender unknown
+- no prior thread context
+- still has `INBOX`
+- body/snippet is a one-line unexplained tasking ask
+- no repo, billing, security, travel, calendar, or customer context
+
+Verification after archive:
+
+- re-read the thread
+- confirm `INBOX` label is gone from all messages
+- if verification fails, record `FAIL`, do not count it as archived
+
 ## Safe Defaults
 
 - never auto-reply
@@ -256,11 +280,10 @@ Cadence:
 
 Behavior:
 
-- observe-only
-- no archive
+- auto-archive only exact Rule 1 / Rule 2 junk
 - no mark read
-- no labels
 - no replies
+- everything else observe-only
 
 Output:
 
@@ -276,7 +299,7 @@ Output:
 ### Phase 2
 
 - auto-archive machine noise
-- auto-archive obvious newsletters not on allowlist
+- auto-archive exact Rule 2 unexplained tasking junk
 - keep audit summary
 
 ### Phase 3

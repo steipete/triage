@@ -181,4 +181,4 @@ git clone https://github.com/steipete/triage.git ~/.openclaw/workspace-clawblock
 - Rule edits belong in this repo first.
 - After changing rules, pull the workspace checkout.
 - State and audit logs are runtime data; do not store them in this repo.
-- Email triage is observe-first right now. No archive/reply mutations.
+- Email triage may auto-archive only exact Rule 1 / Rule 2 junk. Everything else remains observe-first.
