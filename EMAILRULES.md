@@ -71,6 +71,34 @@ Current known match:
 
 - `1138428884@qq.com`
 
+### Rule 2. Unknown low-context tasking mail
+
+Archive candidate when all are true:
+
+- unknown sender
+- no prior relationship / no active thread context
+- short imperative or vague request with no explanation
+- asks Peter to do work without context
+
+Strong match signals:
+
+- one-line ask like `帮我整理一下桌面` / `please clean up my desktop` / similar unexplained tasking
+- sender is consumer mail with no recognizable identity
+- no subject or generic subject
+- no signature, project context, or prior thread history
+
+Do not auto-archive if:
+
+- sender is known
+- part of an existing conversation
+- request references a real repo, bug, customer issue, invoice, or schedule
+- message contains enough context to become actionable after a quick read
+
+Action:
+
+- report as archive candidate
+- observe-first mode: do not mutate yet
+
 ## Classes
 
 ### Security / Incident / Abuse
