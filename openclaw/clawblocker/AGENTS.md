@@ -14,4 +14,5 @@ Run contract:
 
 Runbooks:
 - `jobs/twitter-moderation.md`
+- `jobs/twitter-replies.md`
 - `jobs/email-triage.md`

@@ -5,6 +5,7 @@ Source of truth for Peter's moderation and email-triage policy.
 Primary rules:
 
 - [`TWITTER_MENTIONS.md`](./TWITTER_MENTIONS.md)
+- [`TWITTER_REPLIES.md`](./TWITTER_REPLIES.md)
 - [`EMAILRULES.md`](./EMAILRULES.md)
 
 Also includes restore docs/templates for the current OpenClaw cron setup:
@@ -14,18 +15,19 @@ Also includes restore docs/templates for the current OpenClaw cron setup:
 
 ## Current Setup
 
-There are 3 related automations:
+There are 4 related automations:
 
 1. X mention moderation
-2. Gmail triage
-3. Daily X block digest email
+2. X reply-opportunity triage
+3. Gmail triage
+4. Daily X block digest email
 
-The first 2 share one OpenClaw agent/workspace:
+The first 3 share one OpenClaw agent/workspace:
 
 - agent id: `clawblocker`
 - one workspace
 - one repo checkout inside that workspace
-- two runbooks
+- three runbooks
 - separate state/audit files per cron
 - twitter moderation also doubles as the `birdclaw` mention-cache warmer every 10 minutes; no second cache cron needed
 
@@ -42,15 +44,18 @@ Target layout:
     triage/                       # checkout of this repo
     jobs/
       twitter-moderation.md
+      twitter-replies.md
       email-triage.md
     skills/
       bird-twitter-moderation/
         SKILL.md
     state/
       twitter.json
+      twitter-replies.json
       email.json
     audit/
       twitter/
+      twitter-replies/
       email/
   agents/
     clawblocker/
@@ -85,7 +90,25 @@ Message:
 Run one clawblocker pass now using ~/.openclaw/workspace-clawblocker/jobs/twitter-moderation.md. Follow it exactly.
 ```
 
-### 2. Email Triage
+### 2. Twitter Reply Triage
+
+- schedule: `17 */6 * * *`
+- timezone: `Europe/London`
+- agent: `clawblocker`
+- model: `openai/gpt-5.4`
+- thinking: `low`
+- timeout: `300s`
+- delivery: `none`
+- runbook: `jobs/twitter-replies.md`
+- warms `birdclaw` mention cache, runs a deeper `xurl` backfill, then surfaces only high-signal unreplied mentions worth Peter's time
+
+Message:
+
+```text
+Run one clawblocker pass now using ~/.openclaw/workspace-clawblocker/jobs/twitter-replies.md. Follow it exactly.
+```
+
+### 3. Email Triage
 
 - schedule: `5 */3 * * *`
 - timezone: `Europe/London`
@@ -101,7 +124,7 @@ Message:
 Run one clawblocker pass now using ~/.openclaw/workspace-clawblocker/jobs/email-triage.md. Follow it exactly.
 ```
 
-### 3. Daily X Block Digest
+### 4. Daily X Block Digest
 
 - schedule: `0 9 * * *`
 - timezone: `Europe/London`
@@ -169,9 +192,11 @@ git clone https://github.com/steipete/triage.git ~/.openclaw/workspace-clawblock
 
 - [`openclaw/clawblocker/AGENTS.md`](./openclaw/clawblocker/AGENTS.md)
 - [`openclaw/clawblocker/jobs/twitter-moderation.md`](./openclaw/clawblocker/jobs/twitter-moderation.md)
+- [`openclaw/clawblocker/jobs/twitter-replies.md`](./openclaw/clawblocker/jobs/twitter-replies.md)
 - [`openclaw/clawblocker/jobs/email-triage.md`](./openclaw/clawblocker/jobs/email-triage.md)
 - [`openclaw/clawblocker/skills/bird-twitter-moderation/SKILL.md`](./openclaw/clawblocker/skills/bird-twitter-moderation/SKILL.md)
 - [`openclaw/clawblocker/state/twitter.json.example`](./openclaw/clawblocker/state/twitter.json.example)
+- [`openclaw/clawblocker/state/twitter-replies.json.example`](./openclaw/clawblocker/state/twitter-replies.json.example)
 - [`openclaw/clawblocker/state/email.json.example`](./openclaw/clawblocker/state/email.json.example)
 
 5. Create the block digest workspace/agent from the templates in [`openclaw/blockdigest`](./openclaw/blockdigest).
@@ -181,6 +206,7 @@ git clone https://github.com/steipete/triage.git ~/.openclaw/workspace-clawblock
 7. Verify:
 
 - twitter run reads `jobs/twitter-moderation.md`
+- reply triage run reads `jobs/twitter-replies.md`
 - email run reads `jobs/email-triage.md`
 - both use `agentId: clawblocker`
 - only one triage checkout exists under cron workspaces
