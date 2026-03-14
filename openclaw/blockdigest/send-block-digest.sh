@@ -34,22 +34,81 @@ meta_path = Path(sys.argv[5])
 
 london = ZoneInfo("Europe/London")
 
+date_from_file_re = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})$")
+heading_re = re.compile(r"^##\s+Pass(?:\s+@)?\s+(?P<hm>\d{2}:\d{2})\s+UTC$")
+pipe_re = re.compile(
+    r"^-?\s*(?P<ts>[^|]+?)\s*\|\s*(?P<action>[A-Za-z-]+)\s*\|\s*(?P<handle>@[^|]+?)\s*\|\s*(?P<url>https?://[^| ]+)\s*\|\s*(?P<reasons>.*?)(?:\s*\|\s*transport:\s*(?P<transport>.*))?$",
+    re.IGNORECASE,
+)
+emdash_re = re.compile(
+    r"^-?\s*(?P<ts>.+?)\s+—\s+(?P<action>block|keep|mute)\s+—\s+(?P<handle>@\S+)\s+—\s+(?P<url>https?://\S+)\s+—\s+(?P<reasons>.*?)(?:\s+—\s+(?P<transport>.*))?$",
+    re.IGNORECASE,
+)
+compact_re = re.compile(
+    r"^-?\s*`?(?P<tweet_id>\d+)`?\s+(?P<handle>@\S+)\s+—\s+(?P<action>BLOCK|KEEP|MUTE)\s+—\s+(?P<reasons>.*?)(?:\s+Transport:\s*(?P<transport>.*))?$",
+    re.IGNORECASE,
+)
+
 def parse_ts(raw: str) -> datetime:
     raw = raw.strip()
-    for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%d %H:%M:%S GMT",
+        "%Y-%m-%d %H:%M GMT",
+        "%Y-%m-%d %H:%M UTC",
+        "%Y-%m-%d %H:%MZ",
+    ):
         try:
             return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
         except ValueError:
             pass
-    if raw.endswith(" GMT"):
-        return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S GMT").replace(tzinfo=timezone.utc)
     if raw.endswith(" Europe/London"):
         base = raw[: -len(" Europe/London")]
         return datetime.strptime(base, "%Y-%m-%d %H:%M").replace(tzinfo=london).astimezone(timezone.utc)
     try:
-        return datetime.fromisoformat(raw)
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(timezone.utc)
     except ValueError:
         return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+
+def build_entry(ts: datetime, handle: str, url: str, reasons: str, transport: str) -> dict:
+    return {
+        "timestamp": ts,
+        "url": url,
+        "reasons": reasons.strip(),
+        "transport": transport.strip(),
+    }
+
+def parse_block_line(line, section_ts):
+    stripped = line.strip()
+    for regex in (pipe_re, emdash_re):
+        match = regex.match(stripped)
+        if not match:
+            continue
+        action = match.group("action").strip().lower()
+        if action != "block":
+            return None
+        ts = parse_ts(match.group("ts"))
+        handle = match.group("handle").strip()
+        return handle, build_entry(
+            ts,
+            handle,
+            match.group("url").strip(),
+            match.group("reasons"),
+            match.group("transport") or "",
+        )
+    compact = compact_re.match(stripped)
+    if compact and section_ts is not None and compact.group("action").strip().lower() == "block":
+        handle = compact.group("handle").strip()
+        url = f"https://x.com/{handle.lstrip('@')}/status/{compact.group('tweet_id')}"
+        return handle, build_entry(
+            section_ts,
+            handle,
+            url,
+            compact.group("reasons"),
+            compact.group("transport") or "",
+        )
+    return None
 
 state = {"lastSentAt": None, "lastSubject": None, "lastCount": 0}
 if state_path.exists():
@@ -64,29 +123,25 @@ if last_sent_raw:
 else:
     window_start = now_utc - timedelta(days=1)
 
-line_re = re.compile(
-    r"^- (?P<ts>[^|]+?) \| (?P<action>[^|]+?) \| (?P<handle>[^|]+?) \| (?P<url>[^|]+?) \| reasons: (?P<reasons>.*?)(?: \| transport: (?P<transport>.*))?$"
-)
-
 entries: OrderedDict[str, dict] = OrderedDict()
 for path in sorted(audit_dir.glob("*.md")):
+    section_ts = None
+    date_match = date_from_file_re.match(path.stem)
+    file_date = date_match.group("date") if date_match else None
     for raw_line in path.read_text(encoding="utf-8").splitlines():
-        match = line_re.match(raw_line.strip())
-        if not match:
+        heading = heading_re.match(raw_line.strip())
+        if heading and file_date:
+            section_ts = datetime.fromisoformat(f"{file_date}T{heading.group('hm')}:00+00:00")
             continue
-        if match.group("action").strip() != "block":
+        parsed = parse_block_line(raw_line, section_ts)
+        if not parsed:
             continue
-        ts = parse_ts(match.group("ts"))
+        handle, item = parsed
+        ts = item["timestamp"]
         if ts <= window_start or ts > now_utc:
             continue
-        handle = match.group("handle").strip()
         if handle not in entries:
-            entries[handle] = {
-                "timestamp": ts,
-                "url": match.group("url").strip(),
-                "reasons": match.group("reasons").strip(),
-                "transport": (match.group("transport") or "").strip(),
-            }
+            entries[handle] = item
 
 local_date = now_utc.astimezone(london).strftime("%Y-%m-%d")
 window_label = (
