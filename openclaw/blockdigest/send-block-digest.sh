@@ -67,9 +67,12 @@ def parse_ts(raw: str) -> datetime:
         base = raw[: -len(" Europe/London")]
         return datetime.strptime(base, "%Y-%m-%d %H:%M").replace(tzinfo=london).astimezone(timezone.utc)
     try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(timezone.utc)
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except ValueError:
         return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 def build_entry(ts: datetime, handle: str, url: str, reasons: str, transport: str) -> dict:
     return {
