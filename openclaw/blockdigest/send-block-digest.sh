@@ -88,7 +88,10 @@ def parse_block_line(line, section_ts):
         action = match.group("action").strip().lower()
         if action != "block":
             return None
-        ts = parse_ts(match.group("ts"))
+        try:
+            ts = parse_ts(match.group("ts"))
+        except ValueError:
+            return None
         handle = match.group("handle").strip()
         return handle, build_entry(
             ts,
@@ -128,7 +131,11 @@ for path in sorted(audit_dir.glob("*.md")):
     section_ts = None
     date_match = date_from_file_re.match(path.stem)
     file_date = date_match.group("date") if date_match else None
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        continue
+    for raw_line in text.splitlines():
         heading = heading_re.match(raw_line.strip())
         if heading and file_date:
             section_ts = datetime.fromisoformat(f"{file_date}T{heading.group('hm')}:00+00:00")
